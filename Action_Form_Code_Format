@@ -1,0 +1,83 @@
+1. Action Form (HEADER ONLY NO GRID)
+
+//EVENT
+[Label("Create Adjustment")]
+[RecalculateOnChange(nameof(AfterSaveContext),nameof(MTMFWCRep),nameof(ghGridMain),nameof(gcbReportDesc))]
+[InputType(InputTypeAttribute.Button)]
+[RecalculateMethod(nameof(ID_CreateAdjustmentClick))]
+public bool? ID_CreateAdjustment {get; set;}
+
+//METHOD
+public AfterSaveContext ID_CreateAdjustmentClick()
+  {
+      VBRecordset rs = default;
+      EditModeEnum EditMode = default;
+      rs = MTMtWorkersCompensationReportMenuItemGhGridMain.CreateRecordset(ghGridMain.Where(h=>h.IsSelected == true).ToList());
+      if (rs.EOF()) 
+      {
+          throw PromptHelper.WarningPrompt("Select an existing record before creating an adjustment.");
+      }
+      if (rs.RecordCount() != 1) 
+      {
+          throw PromptHelper.WarningPrompt("Select only one record to create an adjustment.");
+      }
+      if (rs.GetAs<bool>("AdjusmentFlag") == true) 
+      {
+          throw PromptHelper.WarningPrompt("You cannot create an adjustment to another adjustment.");
+      }
+      rs["CreateAdj"] = 1;
+
+      if (MTMFWCRep == null)
+      {
+          MTMFWCRep = new MTMFWCRep();
+          MTMFWCRep.MaintForm_ShowMaintForm(EditModeEnum.EditModeAdd,rs.GetAs<int>("ID"));
+      }
+      MetadataAction action = MetadataAction.CreateActionWithValidate("", MTMFWCRepFormMetadata.CreateActionActionMTMFWCRepView());
+      action.ViewToShow.SubPropertyName = nameof(MTMFWCRep);
+      action.ViewToShow.DrawWidth = 50;
+      bool response = VerificationQuestionHelper.ShowAction(nameof(MTMFWCRep), action, new Dictionary<string, object>() { { nameof(MTMFWCRep), MTMFWCRep } });
+      if (response)
+      {
+          MTMFWCRep.cmdOK_Click();
+
+      }
+      MTMFWCRep = null;
+      LoadGrid(false);
+
+      return new AfterSaveContext
+      {
+          LookupsToRefresh = new[]
+          {
+              new LookupProviderAttribute(
+                      typeof(MTMtWorkersCompensationReportMenuItemGcbReportDescLookupProvider))
+                  .Lookup,
+          },
+      };
+  }
+
+//FORM META DATA
+public static IViewMetadata CreateActionActionMTMFWCRepView()
+{
+    var CreateActionActionMTMFWCRepView = new ViewMetadata("", new PropertyAugmentor<MTMFWCRep>()
+    {
+        {PropertyAugmentor.CreateHeader("Information"), 100},
+        {PropertyAugmentor.CreateHeader("Employee Information"), 100},
+        {nameof(MTMFWCRep.fpEmployeeSSN), 50},
+        {nameof(MTMFWCRep.fptReportDesc), 50},
+        {nameof(MTMFWCRep.fpLastName), 25},
+        {nameof(MTMFWCRep.fpFirstName), 25},
+        {nameof(MTMFWCRep.fpMiddleName), 25},
+        {nameof(MTMFWCRep.fpNamePreFix), 25},
+        {nameof(MTMFWCRep.chkAdjustmentFlag), 10, x => { x.Spacer = 90;
+            x.Alignment = Align.Right;
+        }},
+        {nameof(MTMFWCRep.fpcWageBasis), 50},
+        {nameof(MTMFWCRep.fpcERAmount), 50},
+        {nameof(MTMFWCRep.fpComments), 100},
+    }.GenerateMetadata());
+    CreateActionActionMTMFWCRepView.HelpId = "frmMTMFWCRep";
+    CreateActionActionMTMFWCRepView.Dense = true;
+    CreateActionActionMTMFWCRepView.TitleProperty = nameof(MTMFWCRep.TitleProperty);
+
+    return CreateActionActionMTMFWCRepView;
+}
